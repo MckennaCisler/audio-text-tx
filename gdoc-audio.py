@@ -8,8 +8,8 @@ import pyaudio
 import base64
 import pyperclip
 
-AUDIO_CHUNK = 6*120
-AUDIO_RATE = 4000
+AUDIO_CHUNK = 6*500
+AUDIO_RATE = 2000
 
 GDOC = "https://docs.google.com/document/d/1uo6DeafeB3qoye25EpZXqZhiRbxN0t63xaQgBrjW1Ng/edit?usp=sharing"
 
@@ -70,7 +70,6 @@ class Audio:
         raw = self.stream.read(self.chunk_size)
         encoded = base64.b64encode(raw)
         out_string = str(encoded)+"\n"
-        print(out_string)
         return out_string
 
     def play_audio_buffer(self, buf):
