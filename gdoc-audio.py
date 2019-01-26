@@ -6,16 +6,27 @@ from selenium.webdriver.common.action_chains import ActionChains
 import time
 
 CHUNK_SIZE = 10
+AUDIO_CHUNK = 36
+AUDIO_RATE = 44100
+
 GDOC = "https://docs.google.com/document/d/1uo6DeafeB3qoye25EpZXqZhiRbxN0t63xaQgBrjW1Ng/edit?usp=sharing"
 
 class GDocTX:
     def __init__(self, gdoc):
+        # init selenium things
         self.driver = webdriver.Firefox()
         self.driver.get(gdoc)
         self.txt_element = self.driver.find_element_by_class_name("docs-texteventtarget-iframe")
 
+        # init PyAudio
+        p=pyaudio.PyAudio()
+
     def __del__(self):
+        # close selenium
         self.driver.close()
+
+        # close PyAudio
+        p.terminate()
 
     def send_buf(self, buf):
         ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
@@ -41,10 +52,40 @@ class GDocRX:
 ##### Audio #####
 
 def rec_audio_buffer():
-    return "aaaaaaaaaa"
+    stream=p.open(format=pyaudio.paInt16,channels=1,rate=RATE,input=True,
+                  frames_per_buffer=CHUNK)
+
+
+    # collect audio
+    out_string ="" #empty string to append to
+    for i in range(int(5*44100/CHUNK)): #go for a few seconds
+        raw = stream.read(CHUNK)
+        encoded = base64.b64encode(raw)
+        out_string += str(encoded)+"\n")
+
+    # stop recording
+    stream.stop_stream()
+    stream.close()
+
+
+    return out_string
 
 def play_audio_buffer(buf):
-    print(buf)
+    stream=p.open(format=pyaudio.paInt16,channels=1,rate=RATE,output=True,
+                  frames_per_buffer=CHUNK)
+
+    # split input buf string
+    frames = buf.split('\n')
+
+    #
+    for f in frames: #go for a few seconds
+        raw_frame = eval(f)
+        decoded = bytes(base64.b64decode(raw_frame))
+        stream.write(decoded)
+
+    # stop playing
+    stream.stop_stream()
+    stream.close()
 
 ##### Runners #####
 
