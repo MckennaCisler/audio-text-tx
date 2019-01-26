@@ -90,9 +90,12 @@ def run_tx():
 def run_rx():
     rx = GDocRX(GDOC)
     audio = Audio(False)
+    last_buf=None
     while True:
         buf = rx.get_buf(AUDIO_CHUNK)
-        audio.play_audio_buffer(buf)
+        if(buf!=last_buf):
+            audio.play_audio_buffer(buf)
+        last_buf=buf
 
 def main():
     usage = "usage: ./gdoc-audio.py [tx|rx]"
