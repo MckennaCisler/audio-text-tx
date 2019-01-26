@@ -8,8 +8,8 @@ import pyaudio
 import base64
 import pyperclip
 
-AUDIO_CHUNK = 6*20
-AUDIO_RATE = 44100
+AUDIO_CHUNK = 6*120
+AUDIO_RATE = 4000
 
 GDOC = "https://docs.google.com/document/d/1uo6DeafeB3qoye25EpZXqZhiRbxN0t63xaQgBrjW1Ng/edit?usp=sharing"
 
@@ -45,7 +45,7 @@ class GDocRX:
     def get_buf(self, size):
         buf = ""
         while len(buf) < size:
-            buf = self.editor.text
+            buf = self.editor.text.replace("\n", "")
             time.sleep(0.01)
         return buf
 
