@@ -6,6 +6,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 import time
 import pyaudio
 import base64
+import pyperclip
 
 AUDIO_CHUNK = 6*20
 AUDIO_RATE = 44100
@@ -30,7 +31,11 @@ class GDocTX:
     def send_buf(self, buf):
         ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
         ActionChains(self.driver).key_down(Keys.DELETE).perform()
-        self.txt_element.send_keys(buf)
+
+        # use pyperclip
+        pyperclip.copy(buf)
+        ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('V').key_up(Keys.CONTROL).perform()
+
 
 class GDocRX:
     def __init__(self, gdoc):
