@@ -4,29 +4,28 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 import time
+import pyaudio
+import base64
 
-CHUNK_SIZE = 10
-AUDIO_CHUNK = 36
+AUDIO_CHUNK = 6*20
 AUDIO_RATE = 44100
+
+# init PyAudio
+p=pyaudio.PyAudio()
+stream=p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True,frames_per_buffer=AUDIO_CHUNK)
 
 GDOC = "https://docs.google.com/document/d/1uo6DeafeB3qoye25EpZXqZhiRbxN0t63xaQgBrjW1Ng/edit?usp=sharing"
 
 class GDocTX:
     def __init__(self, gdoc):
         # init selenium things
-        self.driver = webdriver.Firefox()
+        self.driver = webdriver.Chrome()
         self.driver.get(gdoc)
         self.txt_element = self.driver.find_element_by_class_name("docs-texteventtarget-iframe")
-
-        # init PyAudio
-        p=pyaudio.PyAudio()
 
     def __del__(self):
         # close selenium
         self.driver.close()
-
-        # close PyAudio
-        p.terminate()
 
     def send_buf(self, buf):
         ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
@@ -35,7 +34,7 @@ class GDocTX:
 
 class GDocRX:
     def __init__(self, gdoc):
-        self.driver = webdriver.Firefox()
+        self.driver = webdriver.Chrome()
         self.driver.get(GDOC)
         self.editor = self.driver.find_element_by_class_name("kix-page-content-wrapper")
 
@@ -52,27 +51,16 @@ class GDocRX:
 ##### Audio #####
 
 def rec_audio_buffer():
-    stream=p.open(format=pyaudio.paInt16,channels=1,rate=RATE,input=True,
-                  frames_per_buffer=CHUNK)
-
-
     # collect audio
-    out_string ="" #empty string to append to
-    for i in range(int(5*44100/CHUNK)): #go for a few seconds
-        raw = stream.read(CHUNK)
-        encoded = base64.b64encode(raw)
-        out_string += str(encoded)+"\n")
-
-    # stop recording
-    stream.stop_stream()
-    stream.close()
-
-
+    raw = stream.read(AUDIO_CHUNK)
+    encoded = base64.b64encode(raw)
+    out_string = str(encoded)+"\n"
+    print(out_string)
     return out_string
 
 def play_audio_buffer(buf):
-    stream=p.open(format=pyaudio.paInt16,channels=1,rate=RATE,output=True,
-                  frames_per_buffer=CHUNK)
+    stream=p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,output=True,
+                  frames_per_buffer=AUDIO_CHUNK)
 
     # split input buf string
     frames = buf.split('\n')
@@ -98,7 +86,7 @@ def run_tx():
 def run_rx():
     rx = GDocRX(GDOC)
     while True:
-        buf = rx.get_buf(CHUNK_SIZE)
+        buf = rx.get_buf(AUDIO_CHUNK)
         play_audio_buffer(buf)
 
 def main():
@@ -115,6 +103,11 @@ def main():
             else:
                 print(usage)
         except KeyboardInterrupt:
+            # stop recording
+            stream.stop_stream()
+            stream.close()
+            # close PyAudio
+            p.terminate()
             print("exiting")
 
 if __name__ == "__main__":
