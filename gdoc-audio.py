@@ -10,10 +10,6 @@ import base64
 AUDIO_CHUNK = 6*20
 AUDIO_RATE = 44100
 
-# init PyAudio
-p=pyaudio.PyAudio()
-stream=p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True,frames_per_buffer=AUDIO_CHUNK)
-
 GDOC = "https://docs.google.com/document/d/1uo6DeafeB3qoye25EpZXqZhiRbxN0t63xaQgBrjW1Ng/edit?usp=sharing"
 
 class GDocTX:
@@ -48,46 +44,50 @@ class GDocRX:
             time.sleep(0.01)
         return buf
 
-##### Audio #####
 
-def rec_audio_buffer():
-    # collect audio
-    raw = stream.read(AUDIO_CHUNK)
-    encoded = base64.b64encode(raw)
-    out_string = str(encoded)+"\n"
-    print(out_string)
-    return out_string
+class Audio:
+    def __init__(self, inpt, rate=AUDIO_RATE, chunk_size=AUDIO_CHUNK):
+        self.chunk_size = chunk_size
+        p = pyaudio.PyAudio()
+        if inpt:
+            self.stream=p.open(format=pyaudio.paInt16,channels=1,rate=rate,input=True,frames_per_buffer=chunk_size)
+        else:
+            self.stream=p.open(format=pyaudio.paInt16,channels=1,rate=rate,output=True,
+                          frames_per_buffer=chunk_size)
 
-def play_audio_buffer(buf):
-    stream=p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,output=True,
-                  frames_per_buffer=AUDIO_CHUNK)
+    def __del__(self):
+        # stop playing
+        self.stream.stop_stream()
+        self.stream.close()
 
-    # split input buf string
-    frames = buf.split('\n')
+    def rec_audio_buffer(self):
+        # collect audio
+        raw = self.stream.read(self.chunk_size)
+        encoded = base64.b64encode(raw)
+        out_string = str(encoded)+"\n"
+        print(out_string)
+        return out_string
 
-    #
-    for f in frames: #go for a few seconds
-        raw_frame = eval(f)
+    def play_audio_buffer(self, buf):
+        raw_frame = eval(buf)
         decoded = bytes(base64.b64decode(raw_frame))
-        stream.write(decoded)
-
-    # stop playing
-    stream.stop_stream()
-    stream.close()
+        self.stream.write(decoded)
 
 ##### Runners #####
 
 def run_tx():
     tx = GDocTX(GDOC)
+    audio = Audio(True)
     while True:
-        buf = rec_audio_buffer()
+        buf = audio.rec_audio_buffer()
         tx.send_buf(buf)
 
 def run_rx():
     rx = GDocRX(GDOC)
+    audio = Audio(False)
     while True:
         buf = rx.get_buf(AUDIO_CHUNK)
-        play_audio_buffer(buf)
+        audio.play_audio_buffer(buf)
 
 def main():
     usage = "usage: ./gdoc-audio.py [tx|rx]"
