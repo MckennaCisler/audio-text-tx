@@ -10,9 +10,9 @@ import pyperclip
 import bz2
 
 MIN_BASE64_CHARS = 4
-AUDIO_CHUNK = MIN_BASE64_CHARS*1000
-AUDIO_RATE = 3000
-COMPRESS_LEVEL = 9
+AUDIO_CHUNK = MIN_BASE64_CHARS*1200
+AUDIO_RATE = 4800
+COMPRESS_LEVEL = 1
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
 b_GDOC = "https://docs.google.com/document/d/1HiNo-zLW-M6RK4mEri7Zsdb7RzWgF_U_P9vCQoP44-g/edit?usp=sharing"
@@ -30,9 +30,7 @@ class GDocTX:
 
     def send_buf(self, buf):
         ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
-        ActionChains(self.driver).key_down(Keys.DELETE).perform()
-
-        # ActionChains(self.driver).key_down(Keys.CONTROL).key_down(Keys.END).key_up(Keys.END).key_up(Keys.CONTROL).perform()
+        # ActionChains(self.driver).key_down(Keys.DELETE).perform()
 
         # use pyperclip
         pyperclip.copy(buf)
@@ -49,12 +47,9 @@ class GDocRX:
         self.driver.close()
 
     def get_buf(self, size):
-        buf = ""
-        while len(buf) < size:
-            time.sleep(0.001)
-            buf = self.editor.text
-            buf = buf.replace("\n", "")
-            buf = buf.replace(" ", "")
+        buf = self.editor.text
+        buf = buf.replace("\n", "")
+        buf = buf.replace(" ", "")
         # ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
         # ActionChains(self.driver).key_down(Keys.DELETE).perform()
         return buf
@@ -66,7 +61,6 @@ class Audio:
         p = pyaudio.PyAudio()
         # make one stream both input and output - can read and write
         self.stream=p.open(format=pyaudio.paInt16,channels=1,rate=rate,input=True, output=True, frames_per_buffer=chunk_size)
-
 
     def __del__(self):
         # stop playing
@@ -97,37 +91,23 @@ def run_a():
     tx = GDocTX(a_GDOC)
     rx = GDocRX(b_GDOC)
     audio = Audio()
-    last_buf=None
-    while True:
-        # record and send
-        tx_buf = audio.rec_audio_buffer()
-        # print(tx_buf)
-        tx.send_buf(tx_buf)
-
-        #get buf and, if no duplicate, play
-        rx_buf = rx.get_buf(AUDIO_CHUNK)
-        if(rx_buf!=last_buf):
-            audio.play_audio_buffer(rx_buf)
-
-        last_buf=rx_buf # always do at the end of the loop
+    run(tx, rx, audio)
 
 def run_b():
     tx = GDocTX(b_GDOC)
     rx = GDocRX(a_GDOC)
     audio = Audio()
-    last_buf=None
+    run(tx, rx, audio)
+
+def run(tx, rx, audio):
     while True:
         # record and send
         tx_buf = audio.rec_audio_buffer()
-        # print(tx_buf)
         tx.send_buf(tx_buf)
 
-        # get buf and, if no duplicate, play
-        rx_buf = rx.get_buf(AUDIO_CHUNK/MIN_BASE64_CHARS)
-        if(rx_buf!=last_buf):
-            audio.play_audio_buffer(rx_buf)
-
-        last_buf=rx_buf # always do at the end of the loop
+        # get buf and play
+        rx_buf = rx.get_buf()
+        audio.play_audio_buffer(rx_buf)
 
 def main():
     usage = "usage: ./gdoc-audio.py [a|b]"
