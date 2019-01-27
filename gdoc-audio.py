@@ -7,10 +7,12 @@ import time
 import pyaudio
 import base64
 import pyperclip
+import bz2
 
 MIN_BASE64_CHARS = 4
-AUDIO_CHUNK = MIN_BASE64_CHARS*800
-AUDIO_RATE = 5000
+AUDIO_CHUNK = MIN_BASE64_CHARS*1000
+AUDIO_RATE = 3000
+COMPRESS_LEVEL = 9
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
 b_GDOC = "https://docs.google.com/document/d/1HiNo-zLW-M6RK4mEri7Zsdb7RzWgF_U_P9vCQoP44-g/edit?usp=sharing"
@@ -74,18 +76,20 @@ class Audio:
     def rec_audio_buffer(self):
         # collect audio
         raw = self.stream.read(self.chunk_size)
-        encoded = base64.b64encode(raw)
+        compressed = bz2.compress(raw, compresslevel=COMPRESS_LEVEL)
+        encoded = base64.b64encode(compressed)
         return encoded.decode("utf-8") # convert to string
 
     def play_audio_buffer(self, buf):
-        # make sure 6-aligned
-        extra = len(buf) % MIN_BASE64_CHARS
-        if extra != 0:
-            addons = "0"*(MIN_BASE64_CHARS-extra)
-        else:
-            addons = ""
-        decoded = bytes(base64.b64decode(buf + addons))
-        self.stream.write(decoded)
+        # # make sure 6-aligned
+        # extra = len(buf) % MIN_BASE64_CHARS
+        # if extra != 0:
+        #     addons = "0"*(MIN_BASE64_CHARS-extra)
+        # else:
+        #     addons = ""
+        decoded = base64.b64decode(buf)
+        decompressed = bz2.decompress(decoded)
+        self.stream.write(decompressed)
 
 ##### Runner #####
 
