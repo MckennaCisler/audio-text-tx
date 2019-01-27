@@ -10,9 +10,9 @@ import pyperclip
 import bz2
 
 MIN_BASE64_CHARS = 4
-AUDIO_CHUNK = MIN_BASE64_CHARS*1200
-AUDIO_RATE = 4800
-COMPRESS_LEVEL = 1
+AUDIO_CHUNK = MIN_BASE64_CHARS*600
+AUDIO_RATE = 4000
+COMPRESS_LEVEL = 9
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
 b_GDOC = "https://docs.google.com/document/d/1HiNo-zLW-M6RK4mEri7Zsdb7RzWgF_U_P9vCQoP44-g/edit?usp=sharing"
