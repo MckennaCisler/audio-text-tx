@@ -8,7 +8,8 @@ import pyaudio
 import base64
 import pyperclip
 
-AUDIO_CHUNK = 6*200
+MIN_BASE64_CHARS = 4
+AUDIO_CHUNK = MIN_BASE64_CHARS*800
 AUDIO_RATE = 5000
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
@@ -29,6 +30,8 @@ class GDocTX:
         ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
         ActionChains(self.driver).key_down(Keys.DELETE).perform()
 
+        # ActionChains(self.driver).key_down(Keys.CONTROL).key_down(Keys.END).key_up(Keys.END).key_up(Keys.CONTROL).perform()
+
         # use pyperclip
         pyperclip.copy(buf)
         ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('V').key_up(Keys.CONTROL).perform()
@@ -38,7 +41,7 @@ class GDocRX:
     def __init__(self, gdoc):
         self.driver = webdriver.Chrome()
         self.driver.get(gdoc)
-        self.editor = self.driver.find_element_by_class_name("kix-page-content-wrapper")
+        self.editor = self.driver.find_element_by_class_name("kix-zoomdocumentplugin-outer")
 
     def __del__(self):
         self.driver.close()
@@ -46,8 +49,12 @@ class GDocRX:
     def get_buf(self, size):
         buf = ""
         while len(buf) < size:
-            buf = self.editor.text.replace("\n", "")
-            time.sleep(0.01)
+            time.sleep(0.001)
+            buf = self.editor.text
+            buf = buf.replace("\n", "")
+            buf = buf.replace(" ", "")
+        # ActionChains(self.driver).key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+        # ActionChains(self.driver).key_down(Keys.DELETE).perform()
         return buf
 
 
@@ -68,12 +75,16 @@ class Audio:
         # collect audio
         raw = self.stream.read(self.chunk_size)
         encoded = base64.b64encode(raw)
-        out_string = str(encoded)+"\n"
-        return out_string
+        return encoded.decode("utf-8") # convert to string
 
     def play_audio_buffer(self, buf):
-        raw_frame = eval(buf)
-        decoded = bytes(base64.b64decode(raw_frame))
+        # make sure 6-aligned
+        extra = len(buf) % MIN_BASE64_CHARS
+        if extra != 0:
+            addons = "0"*(MIN_BASE64_CHARS-extra)
+        else:
+            addons = ""
+        decoded = bytes(base64.b64decode(buf + addons))
         self.stream.write(decoded)
 
 ##### Runner #####
@@ -108,7 +119,7 @@ def run_b():
         tx.send_buf(tx_buf)
 
         # get buf and, if no duplicate, play
-        rx_buf = rx.get_buf(AUDIO_CHUNK)
+        rx_buf = rx.get_buf(AUDIO_CHUNK/MIN_BASE64_CHARS)
         if(rx_buf!=last_buf):
             audio.play_audio_buffer(rx_buf)
 
@@ -128,11 +139,6 @@ def main():
             else:
                 print(usage)
         except KeyboardInterrupt:
-            # stop recording
-            stream.stop_stream()
-            stream.close()
-            # close PyAudio
-            p.terminate()
             print("exiting")
 
 if __name__ == "__main__":
