@@ -46,7 +46,7 @@ class GDocRX:
     def __del__(self):
         self.driver.close()
 
-    def get_buf(self, size):
+    def get_buf(self):
         buf = self.editor.text
         buf = buf.replace("\n", "")
         buf = buf.replace(" ", "")
@@ -70,6 +70,10 @@ class Audio:
     def rec_audio_buffer(self):
         # collect audio
         raw = self.stream.read(self.chunk_size)
+        return self.encode_buf(raw)
+
+    @staticmethod
+    def encode_buf(raw):
         compressed = bz2.compress(raw, compresslevel=COMPRESS_LEVEL)
         encoded = base64.b64encode(compressed)
         return encoded.decode("utf-8") # convert to string
@@ -81,9 +85,13 @@ class Audio:
         #     addons = "0"*(MIN_BASE64_CHARS-extra)
         # else:
         #     addons = ""
+
+        self.stream.write(self.decode_buf(buf))
+
+    @staticmethod
+    def decode_buf(buf):
         decoded = base64.b64decode(buf)
-        decompressed = bz2.decompress(decoded)
-        self.stream.write(decompressed)
+        return bz2.decompress(decoded)
 
 ##### Runner #####
 
@@ -100,14 +108,23 @@ def run_b():
     run(tx, rx, audio)
 
 def run(tx, rx, audio):
-    while True:
-        # record and send
-        tx_buf = audio.rec_audio_buffer()
-        tx.send_buf(tx_buf)
+    p = pyaudio.PyAudio()
 
-        # get buf and play
-        rx_buf = rx.get_buf()
-        audio.play_audio_buffer(rx_buf)
+    def callback(in_data, frame_count, time_info, status):
+        tx.send_buf(Audio.encode_buf(in_data))
+        out_data = Audio.decode_buf(rx.get_buf())
+        return (out_data, pyaudio.paContinue)
+
+    # make one stream both input and output - can read and write
+    stream=p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True, output=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback)
+
+    stream.start_stream()
+
+    while stream.is_active():
+        time.sleep(0.1)
+
+    stream.stop_stream()
+    stream.close()
 
 def main():
     usage = "usage: ./gdoc-audio.py [a|b]"
