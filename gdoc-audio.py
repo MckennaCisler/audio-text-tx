@@ -10,9 +10,9 @@ import pyperclip
 import bz2
 
 MIN_BASE64_CHARS = 4
-AUDIO_CHUNK = MIN_BASE64_CHARS*600
-AUDIO_RATE = 4000
-COMPRESS_LEVEL = 9
+AUDIO_CHUNK = MIN_BASE64_CHARS*1500
+AUDIO_RATE = 3000
+# COMPRESS_LEVEL = 9
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
 b_GDOC = "https://docs.google.com/document/d/1HiNo-zLW-M6RK4mEri7Zsdb7RzWgF_U_P9vCQoP44-g/edit?usp=sharing"
@@ -67,31 +67,17 @@ class Audio:
         self.stream.stop_stream()
         self.stream.close()
 
-    def rec_audio_buffer(self):
-        # collect audio
-        raw = self.stream.read(self.chunk_size)
-        return self.encode_buf(raw)
-
     @staticmethod
     def encode_buf(raw):
-        compressed = bz2.compress(raw, compresslevel=COMPRESS_LEVEL)
-        encoded = base64.b64encode(compressed)
+        # compressed = bz2.compress(raw, compresslevel=COMPRESS_LEVEL)
+        encoded = base64.b64encode(raw)
         return encoded.decode("utf-8") # convert to string
-
-    def play_audio_buffer(self, buf):
-        # # make sure 6-aligned
-        # extra = len(buf) % MIN_BASE64_CHARS
-        # if extra != 0:
-        #     addons = "0"*(MIN_BASE64_CHARS-extra)
-        # else:
-        #     addons = ""
-
-        self.stream.write(self.decode_buf(buf))
 
     @staticmethod
     def decode_buf(buf):
         decoded = base64.b64decode(buf)
-        return bz2.decompress(decoded)
+        return decoded
+        # return bz2.decompress(decoded)
 
 ##### Runner #####
 
@@ -111,7 +97,9 @@ def run(tx, rx, audio):
     p = pyaudio.PyAudio()
 
     def callback_tx(in_data, frame_count, time_info, status):
+        start = time.time()
         tx.send_buf(Audio.encode_buf(in_data))
+        print(time.time() - start)
         return (in_data, pyaudio.paContinue)
 
     def callback_rx(in_data, frame_count, time_info, status):
@@ -126,7 +114,7 @@ def run(tx, rx, audio):
     stream_rx.start_stream()
 
     while stream_tx.is_active() or stream_rx.is_active():
-        time.sleep(0.1)
+        time.sleep(1)
 
     stream_tx.stop_stream()
     stream_tx.close()
