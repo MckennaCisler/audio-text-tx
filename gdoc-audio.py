@@ -110,21 +110,28 @@ def run_b():
 def run(tx, rx, audio):
     p = pyaudio.PyAudio()
 
-    def callback(in_data, frame_count, time_info, status):
+    def callback_tx(in_data, frame_count, time_info, status):
         tx.send_buf(Audio.encode_buf(in_data))
+        return (in_data, pyaudio.paContinue)
+
+    def callback_rx(in_data, frame_count, time_info, status):
         out_data = Audio.decode_buf(rx.get_buf())
         return (out_data, pyaudio.paContinue)
 
     # make one stream both input and output - can read and write
-    stream=p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True, output=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback)
+    stream_tx = p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback_tx)
+    stream_rx = p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE, output=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback_rx)
 
-    stream.start_stream()
+    stream_tx.start_stream()
+    stream_rx.start_stream()
 
-    while stream.is_active():
+    while stream_tx.is_active() or stream_rx.is_active():
         time.sleep(0.1)
 
-    stream.stop_stream()
-    stream.close()
+    stream_tx.stop_stream()
+    stream_tx.close()
+    stream_rx.stop_stream()
+    stream_rx.close()
 
 def main():
     usage = "usage: ./gdoc-audio.py [a|b]"
