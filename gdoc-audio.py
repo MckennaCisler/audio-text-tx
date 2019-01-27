@@ -105,11 +105,13 @@ def run(tx, rx, audio):
     def callback_tx(in_data, frame_count, time_info, status):
         start = time.time()
         tx.send_buf(Audio.encode_buf(in_data))
-        print(time.time() - start)
+        print("TX time: %f%%" % (100*(time.time() - start)/(AUDIO_CHUNK/float(AUDIO_RATE))))
         return (in_data, pyaudio.paContinue)
 
     def callback_rx(in_data, frame_count, time_info, status):
+        start = time.time()
         out_data = Audio.decode_buf(rx.get_buf())
+        print("RX time: %f%%" % (100*(time.time() - start)/(AUDIO_CHUNK/float(AUDIO_RATE))))
         return (out_data, pyaudio.paContinue)
 
     # make one stream both input and output - can read and write
