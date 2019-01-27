@@ -10,9 +10,9 @@ import pyperclip
 import bz2
 
 MIN_BASE64_CHARS = 4
-AUDIO_CHUNK = MIN_BASE64_CHARS*1200
-AUDIO_RATE = 4800
-COMPRESS_LEVEL = 1
+AUDIO_CHUNK = MIN_BASE64_CHARS*1500
+AUDIO_RATE = 3000
+#COMPRESS_LEVEL = 1
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
 b_GDOC = "https://docs.google.com/document/d/1HiNo-zLW-M6RK4mEri7Zsdb7RzWgF_U_P9vCQoP44-g/edit?usp=sharing"
@@ -46,7 +46,7 @@ class GDocRX:
     def __del__(self):
         self.driver.close()
 
-    def get_buf(self, size):
+    def get_buf(self):
         buf = self.editor.text
         buf = buf.replace("\n", "")
         buf = buf.replace(" ", "")
@@ -70,20 +70,14 @@ class Audio:
     def rec_audio_buffer(self):
         # collect audio
         raw = self.stream.read(self.chunk_size)
-        compressed = bz2.compress(raw, compresslevel=COMPRESS_LEVEL)
-        encoded = base64.b64encode(compressed)
+        # compressed = bz2.compress(raw, compresslevel=COMPRESS_LEVEL)
+        encoded = base64.b64encode(raw)
         return encoded.decode("utf-8") # convert to string
 
     def play_audio_buffer(self, buf):
-        # # make sure 6-aligned
-        # extra = len(buf) % MIN_BASE64_CHARS
-        # if extra != 0:
-        #     addons = "0"*(MIN_BASE64_CHARS-extra)
-        # else:
-        #     addons = ""
         decoded = base64.b64decode(buf)
-        decompressed = bz2.decompress(decoded)
-        self.stream.write(decompressed)
+        # decompressed = bz2.decompress(decoded)
+        self.stream.write(decoded)
 
 ##### Runner #####
 
