@@ -10,8 +10,8 @@ import pyperclip
 import bz2
 
 MIN_BASE64_CHARS = 4
-AUDIO_CHUNK = MIN_BASE64_CHARS*1500
-AUDIO_RATE = 3000
+AUDIO_CHUNK = MIN_BASE64_CHARS*1200
+AUDIO_RATE = 4000
 # COMPRESS_LEVEL = 9
 
 a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
@@ -81,14 +81,20 @@ class Audio:
 
 ##### Runner #####
 
-def run_a():
+def run_a(uni=False):
     tx = GDocTX(a_GDOC)
-    rx = GDocRX(b_GDOC)
+    if uni:
+        rx = None
+    else:
+        rx = GDocRX(b_GDOC)
     audio = Audio()
     run(tx, rx, audio)
 
-def run_b():
-    tx = GDocTX(b_GDOC)
+def run_b(uni=False):
+    if uni:
+        tx = None
+    else:
+        tx = GDocTX(b_GDOC)
     rx = GDocRX(a_GDOC)
     audio = Audio()
     run(tx, rx, audio)
@@ -107,31 +113,39 @@ def run(tx, rx, audio):
         return (out_data, pyaudio.paContinue)
 
     # make one stream both input and output - can read and write
-    stream_tx = p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback_tx)
-    stream_rx = p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE, output=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback_rx)
+    if tx is not None:
+        stream_tx = p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE,input=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback_tx)
+    if rx is not None:
+        stream_rx = p.open(format=pyaudio.paInt16,channels=1,rate=AUDIO_RATE, output=True, frames_per_buffer=AUDIO_CHUNK, stream_callback=callback_rx)
 
-    stream_tx.start_stream()
-    stream_rx.start_stream()
+    if tx is not None:
+        stream_tx.start_stream()
+    if rx is not None:
+        stream_rx.start_stream()
 
-    while stream_tx.is_active() or stream_rx.is_active():
+    while (tx is not None and stream_tx.is_active()) or \
+        (rx is not None and stream_rx.is_active()):
         time.sleep(1)
 
-    stream_tx.stop_stream()
-    stream_tx.close()
-    stream_rx.stop_stream()
-    stream_rx.close()
+    if tx is not None:
+        stream_tx.stop_stream()
+        stream_tx.close()
+    if rx is not None:
+        stream_rx.stop_stream()
+        stream_rx.close()
 
 def main():
-    usage = "usage: ./gdoc-audio.py [a|b]"
-    if len(sys.argv) != 2:
+    usage = "usage: ./gdoc-audio.py [a|b] [uni|bi]"
+    if len(sys.argv) != 3:
         print(usage)
     else:
         try:
+            uni = sys.argv[2] == "uni"
             side = sys.argv[1]
             if side == "a":
-                run_a()
+                run_a(uni=uni)
             elif side == "b":
-                run_b()
+                run_b(uni=uni)
             else:
                 print(usage)
         except KeyboardInterrupt:
