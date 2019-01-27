@@ -8,10 +8,11 @@ import pyaudio
 import base64
 import pyperclip
 
-AUDIO_CHUNK = 6*500
-AUDIO_RATE = 2000
+AUDIO_CHUNK = 6*200
+AUDIO_RATE = 5000
 
-GDOC = "https://docs.google.com/document/d/1uo6DeafeB3qoye25EpZXqZhiRbxN0t63xaQgBrjW1Ng/edit?usp=sharing"
+a_GDOC = "https://docs.google.com/document/d/1pIDWZmBUX7o7hK0ZYNKAqoFRroX8rLYvFEeF-bSz2L4/edit?usp=sharing"
+b_GDOC = "https://docs.google.com/document/d/1HiNo-zLW-M6RK4mEri7Zsdb7RzWgF_U_P9vCQoP44-g/edit?usp=sharing"
 
 class GDocTX:
     def __init__(self, gdoc):
@@ -36,7 +37,7 @@ class GDocTX:
 class GDocRX:
     def __init__(self, gdoc):
         self.driver = webdriver.Chrome()
-        self.driver.get(GDOC)
+        self.driver.get(gdoc)
         self.editor = self.driver.find_element_by_class_name("kix-page-content-wrapper")
 
     def __del__(self):
@@ -51,14 +52,12 @@ class GDocRX:
 
 
 class Audio:
-    def __init__(self, inpt, rate=AUDIO_RATE, chunk_size=AUDIO_CHUNK):
+    def __init__(self, rate=AUDIO_RATE, chunk_size=AUDIO_CHUNK):
         self.chunk_size = chunk_size
         p = pyaudio.PyAudio()
-        if inpt:
-            self.stream=p.open(format=pyaudio.paInt16,channels=1,rate=rate,input=True,frames_per_buffer=chunk_size)
-        else:
-            self.stream=p.open(format=pyaudio.paInt16,channels=1,rate=rate,output=True,
-                          frames_per_buffer=chunk_size)
+        # make one stream both input and output - can read and write
+        self.stream=p.open(format=pyaudio.paInt16,channels=1,rate=rate,input=True, output=True, frames_per_buffer=chunk_size)
+
 
     def __del__(self):
         # stop playing
@@ -77,36 +76,55 @@ class Audio:
         decoded = bytes(base64.b64decode(raw_frame))
         self.stream.write(decoded)
 
-##### Runners #####
+##### Runner #####
 
-def run_tx():
-    tx = GDocTX(GDOC)
-    audio = Audio(True)
-    while True:
-        buf = audio.rec_audio_buffer()
-        tx.send_buf(buf)
-
-def run_rx():
-    rx = GDocRX(GDOC)
-    audio = Audio(False)
+def run_a():
+    tx = GDocTX(a_GDOC)
+    rx = GDocRX(b_GDOC)
+    audio = Audio()
     last_buf=None
     while True:
-        buf = rx.get_buf(AUDIO_CHUNK)
-        if(buf!=last_buf):
-            audio.play_audio_buffer(buf)
-        last_buf=buf
+        # record and send
+        tx_buf = audio.rec_audio_buffer()
+        # print(tx_buf)
+        tx.send_buf(tx_buf)
+
+        #get buf and, if no duplicate, play
+        rx_buf = rx.get_buf(AUDIO_CHUNK)
+        if(rx_buf!=last_buf):
+            audio.play_audio_buffer(rx_buf)
+
+        last_buf=rx_buf # always do at the end of the loop
+
+def run_b():
+    tx = GDocTX(b_GDOC)
+    rx = GDocRX(a_GDOC)
+    audio = Audio()
+    last_buf=None
+    while True:
+        # record and send
+        tx_buf = audio.rec_audio_buffer()
+        # print(tx_buf)
+        tx.send_buf(tx_buf)
+
+        # get buf and, if no duplicate, play
+        rx_buf = rx.get_buf(AUDIO_CHUNK)
+        if(rx_buf!=last_buf):
+            audio.play_audio_buffer(rx_buf)
+
+        last_buf=rx_buf # always do at the end of the loop
 
 def main():
-    usage = "usage: ./gdoc-audio.py [tx|rx]"
+    usage = "usage: ./gdoc-audio.py [a|b]"
     if len(sys.argv) != 2:
         print(usage)
     else:
         try:
             side = sys.argv[1]
-            if side == "tx":
-                run_tx()
-            elif side == "rx":
-                run_rx()
+            if side == "a":
+                run_a()
+            elif side == "b":
+                run_b()
             else:
                 print(usage)
         except KeyboardInterrupt:
